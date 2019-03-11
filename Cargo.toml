@@ -11,4 +11,7 @@ serde_derive = "1.0.87"
 bincode = "1.1.1"
 failure = "0.1.5"
 ndarray = "0.12.1"
+# ron = "0.4.2"
+hdf5 = "0.5.0"
+
 plotlib = {path = "../plotlib"}
