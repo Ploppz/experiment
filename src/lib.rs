@@ -55,6 +55,11 @@ pub trait Experiment: Serialize + DeserializeOwned {
     /// Returns information which helps create a plot
     fn plot<'a>(experiments: &'a [Self]) -> Vec<Page<'a>>;
 
+    // Merge several experiments into one, if applicable.
+    // fn merge(experiments: &'a [Self]) -> Self;
+
+    // fn params(&self) -> Vec<T>;
+
     /// Present writes plot images to path directory.
     /// It takes many rather than one experiment to open up for the possibility of for example
     /// plotting experiments in the same graph.
@@ -93,19 +98,24 @@ pub trait Experiment: Serialize + DeserializeOwned {
         let date = Local::now();
         let _ = fs::create_dir_all(path);
         Self::write_plot(&experiments, path)?;
-        let out_file = fs::File::create(format!("{}/data.bincode", path))?;
-        ron::ser::to_string(&experiments)
-        bincode::serialize_into(out_file, &experiments)?;
+
+        let mut out_file = fs::File::create(format!("{}/data.cbor", path))?;
+
+        // bincode::serialize_into(out_file, &experiments)?;
+        serde_cbor::ser::to_writer(&mut out_file, &experiments)?;
+
         Ok(())
     }
     /// `path` should be to a file `data.bincode`
     fn load(path: &str) -> Result<Vec<Self>, Error> {
         let file = fs::File::open(path)?;
-        Ok(bincode::deserialize_from(file)?)
+
+        // Ok(bincode::deserialize_from(file)?)
+        Ok(serde_cbor::de::from_reader(file)?)
     }
     /// Replot in a directory that already has a serialized experiment
     fn replot(path: &str) -> Result<(), Error> {
-        let e = Self::load(&format!("{}/data.bincode", path))?;
+        let e = Self::load(&format!("{}/data.cbor", path))?;
         Self::write_plot(&e, path)?;
         Ok(())
     }
@@ -121,6 +131,7 @@ pub fn make_path(name: &str) -> String {
 
 
 
+/*
 #[cfg(test)]
 mod tests {
     impl crate::Present for i32 {
@@ -131,3 +142,4 @@ mod tests {
         crate::save("name".to_string(), "".to_string(), 1 as i32, 1 as i32);
     }
 }
+*/
