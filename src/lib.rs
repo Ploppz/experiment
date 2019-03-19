@@ -106,7 +106,7 @@ pub trait Experiment: Serialize + DeserializeOwned {
 
         Ok(())
     }
-    /// `path` should be to a file `data.bincode`
+    /// `path` should be to a file `data.cbor`
     fn load(path: &str) -> Result<Vec<Self>, Error> {
         let file = fs::File::open(path)?;
 
