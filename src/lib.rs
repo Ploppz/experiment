@@ -4,7 +4,7 @@ use chrono::prelude::*;
 use failure::Error;
 use ndarray::{Array1, Array2};
 use plotlib::{
-    repr::{Line, LineStyle},
+    repr::{Line, LineStyle, Scatter},
     view::ContinuousView,
 };
 
@@ -30,17 +30,33 @@ impl<'a> Page<'a> {
 
 
 }
+
+pub enum Style {
+    Points,
+    Lines,
+}
+
 pub struct Plot {
     x: Array1<f64>,
     y: Array1<f64>,
     legend: Option<String>,
+    style: Style,
 }
 impl Plot {
-    pub fn new(x: Array1<f64>, y: Array1<f64>) -> Plot {
+    pub fn scatter_plot(x: Array1<f64>, y: Array1<f64>) -> Plot {
         Plot {
             x,
             y,
             legend: None,
+            style: Style::Points,
+        }
+    }
+    pub fn line_plot(x: Array1<f64>, y: Array1<f64>) -> Plot {
+        Plot {
+            x,
+            y,
+            legend: None,
+            style: Style::Lines,
         }
     }
 
@@ -76,12 +92,15 @@ pub trait Experiment: Serialize + DeserializeOwned {
             for (i, plot) in page.plots.into_iter().enumerate() {
                 // let data: Vec<_> = Iterator::zip(plot.x, plot.y).map(|(x,y)| (*x as f64, *y)).collect();
                 let data: Vec<_> = Iterator::zip(plot.x.iter().cloned(), plot.y.iter().cloned()).collect();
-                let mut line = Line::new(data)
-                    .style(LineStyle::new().colour(colors[i % colors.len()]).width(1.5));
-                if let Some(ref legend) = plot.legend {
-                    line = line.legend(legend.clone());
+                if let Style::Lines = plot.style {
+                    let mut line = Line::new(data).style(LineStyle::new().colour(colors[i % colors.len()]).width(1.5));
+                    if let Some(ref legend) = plot.legend {
+                        line = line.legend(legend.clone());
+                    }
+                    view = view.add(Box::new(line))
+                } else {
+                    view = view.add(Box::new(Scatter::from_slice(&data)))
                 }
-                view = view.add(Box::new(line));
             }
 
             println!(" - {}/{}.svg", path, page.name);
