@@ -9,18 +9,18 @@ use plotlib::{
 };
 
 
-pub struct Page<'a> {
-    plots: Vec<Plot>,
+pub struct Page {
+    pub plots: Vec<Plot>,
     config: ContinuousView,
-    name: &'a str,
+    name: String,
 
 }
-impl<'a> Page<'a> {
-    pub fn new(name: &'a str, config: ContinuousView) -> Self {
+impl Page {
+    pub fn new<S: Into<String>>(name: S, config: ContinuousView) -> Self {
         Page {
             plots: Vec::new(),
             config,
-            name
+            name: name.into()
         }
     }
     pub fn add_plot(mut self, plot: Plot) -> Self {
@@ -31,16 +31,20 @@ impl<'a> Page<'a> {
 
 }
 
+#[derive(Debug, Clone)]
 pub enum Style {
     Points,
     Lines,
 }
 
+#[derive(Debug, Clone)]
 pub struct Plot {
     x: Array1<f64>,
     y: Array1<f64>,
     legend: Option<String>,
     style: Style,
+    width: f32,
+    color: Option<String,>
 }
 impl Plot {
     pub fn scatter_plot(x: Array1<f64>, y: Array1<f64>) -> Plot {
@@ -49,6 +53,8 @@ impl Plot {
             y,
             legend: None,
             style: Style::Points,
+            width: 1.0,
+            color: None,
         }
     }
     pub fn line_plot(x: Array1<f64>, y: Array1<f64>) -> Plot {
@@ -57,6 +63,8 @@ impl Plot {
             y,
             legend: None,
             style: Style::Lines,
+            width: 1.0,
+            color: None,
         }
     }
 
@@ -64,12 +72,20 @@ impl Plot {
         self.legend = Some(legend);
         self
     }
+    pub fn with_width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+    pub fn with_color(mut self, color: String) -> Self {
+        self.color = Some(color);
+        self
+    }
 }
 
 pub trait Experiment: Serialize + DeserializeOwned {
 
     /// Returns information which helps create a plot
-    fn plot<'a>(experiments: &'a [Self]) -> Vec<Page<'a>>;
+    fn plot(experiments: &[Self]) -> Vec<Page>;
 
     // Merge several experiments into one, if applicable.
     // fn merge(experiments: &'a [Self]) -> Self;
@@ -80,7 +96,7 @@ pub trait Experiment: Serialize + DeserializeOwned {
     /// It takes many rather than one experiment to open up for the possibility of for example
     /// plotting experiments in the same graph.
     /// `path` is the path to the directory.
-    fn write_plot<'a>(experiments: &'a [Self], path: &str) -> Result<(), Error> {
+    fn write_plot(experiments: &[Self], path: &str) -> Result<(), Error> {
         println!("Writing to {}", path);
         let colors = vec!["olivedrab", "lightcoral", "royalblue", "peru", "darkcyan", "saddlebrown", "darkmagenta"];
         use plotlib::repr::{Line, LineStyle};
@@ -93,7 +109,8 @@ pub trait Experiment: Serialize + DeserializeOwned {
                 // let data: Vec<_> = Iterator::zip(plot.x, plot.y).map(|(x,y)| (*x as f64, *y)).collect();
                 let data: Vec<_> = Iterator::zip(plot.x.iter().cloned(), plot.y.iter().cloned()).collect();
                 if let Style::Lines = plot.style {
-                    let mut line = Line::new(data).style(LineStyle::new().colour(colors[i % colors.len()]).width(1.5));
+                    let color = plot.color.unwrap_or(colors[i % colors.len()].into());
+                    let mut line = Line::new(data).style(LineStyle::new().colour(color).width(plot.width));
                     if let Some(ref legend) = plot.legend {
                         line = line.legend(legend.clone());
                     }
@@ -112,8 +129,7 @@ pub trait Experiment: Serialize + DeserializeOwned {
     // fn merge(&self, other: &Self) -> Self;
 
     /// Both saves and plots (calls `present`)
-    fn save(experiments: Vec<Self>, path: &str) -> Result<(), Error>
-    {
+    fn save(experiments: Vec<Self>, path: &str) -> Result<(), Error> {
         let date = Local::now();
         let _ = fs::create_dir_all(path);
         Self::write_plot(&experiments, path)?;
