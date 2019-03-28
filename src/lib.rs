@@ -154,6 +154,7 @@ pub trait Experiment: Serialize + DeserializeOwned {
         Self::write_plot(&e, path)?;
         Ok(())
     }
+    fn print_params(&self);
 
 }
 
