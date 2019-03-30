@@ -2,6 +2,7 @@ use std::fs;
 use serde::{Serialize, de::DeserializeOwned, Deserialize};
 use chrono::prelude::*;
 use failure::Error;
+use failure::{bail, format_err};
 use ndarray::{Array1, Array2};
 use plotlib::{
     repr::{Line, LineStyle, Scatter},
@@ -27,8 +28,6 @@ impl Page {
         self.plots.push(plot);
         self
     }
-
-
 }
 
 #[derive(Debug, Clone)]
@@ -121,8 +120,11 @@ pub trait Experiment: Serialize + DeserializeOwned {
             }
 
             println!(" - {}/{}.svg", path, page.name);
-            plotlib::page::Page::single(&view)
-                .save(&format!("{}/{}.svg", path, page.name))?;
+            match plotlib::page::Page::single(&view)
+                    .save(&format!("{}/{}.svg", path, page.name)) {
+                Ok(()) => {},
+                Err(e) => bail!(format_err!("Error in plot {}: {:?}", page.name, e)),
+            }
         }
         Ok(())
     }
