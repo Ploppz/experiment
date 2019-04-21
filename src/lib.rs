@@ -5,7 +5,8 @@ use failure::Error;
 use failure::{bail, format_err};
 use ndarray::{Array1, Array2};
 use plotlib::{
-    repr::{Line, LineStyle, Scatter},
+    repr,
+    style::*,
     view::ContinuousView,
 };
 
@@ -98,7 +99,6 @@ pub trait Experiment: Serialize + DeserializeOwned {
     fn write_plot(experiments: &[Self], path: &str) -> Result<(), Error> {
         println!("Writing to {}", path);
         let colors = vec!["olivedrab", "lightcoral", "royalblue", "peru", "darkcyan", "saddlebrown", "darkmagenta"];
-        use plotlib::repr::{Line, LineStyle};
 
         for page in Self::plot(experiments) {
 
@@ -109,13 +109,14 @@ pub trait Experiment: Serialize + DeserializeOwned {
                 let data: Vec<_> = Iterator::zip(plot.x.iter().cloned(), plot.y.iter().cloned()).collect();
                 if let Style::Lines = plot.style {
                     let color = plot.color.unwrap_or(colors[i % colors.len()].into());
-                    let mut line = Line::new(data).style(LineStyle::new().colour(color).width(plot.width));
+                    let mut line = repr::Plot::new(data).line_style(LineStyle::new().colour(color).width(plot.width));
                     if let Some(ref legend) = plot.legend {
                         line = line.legend(legend.clone());
                     }
-                    view = view.add(Box::new(line))
+                    view = view.add(line)
                 } else {
-                    view = view.add(Box::new(Scatter::from_slice(&data)))
+                    let mut scatter = repr::Plot::new(data).point_style(PointStyle::new());
+                    view = view.add(scatter)
                 }
             }
 
@@ -134,12 +135,14 @@ pub trait Experiment: Serialize + DeserializeOwned {
     fn save(experiments: Vec<Self>, path: &str) -> Result<(), Error> {
         let date = Local::now();
         let _ = fs::create_dir_all(path);
+
+        // Serialize
+        let mut out_file = fs::File::create(format!("{}/data.cbor", path))?;
+        serde_cbor::ser::to_writer(&mut out_file, &experiments)?;
+
+        // Plot
         Self::write_plot(&experiments, path)?;
 
-        let mut out_file = fs::File::create(format!("{}/data.cbor", path))?;
-
-        // bincode::serialize_into(out_file, &experiments)?;
-        serde_cbor::ser::to_writer(&mut out_file, &experiments)?;
 
         Ok(())
     }
