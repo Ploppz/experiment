@@ -15,6 +15,7 @@ pub struct Page {
     pub plots: Vec<Plot>,
     config: ContinuousView,
     name: String,
+    dimensions: (u32, u32),
 
 }
 impl Page {
@@ -22,11 +23,16 @@ impl Page {
         Page {
             plots: Vec::new(),
             config,
-            name: name.into()
+            name: name.into(),
+            dimensions: (600, 400),
         }
     }
     pub fn add_plot(mut self, plot: Plot) -> Self {
         self.plots.push(plot);
+        self
+    }
+    pub fn dimensions(mut self, x: u32, y: u32) -> Self {
+        self.dimensions = (x, y);
         self
     }
 }
@@ -44,7 +50,7 @@ pub struct Plot {
     legend: Option<String>,
     style: Style,
     width: f32,
-    color: Option<String,>
+    color: Option<String>,
 }
 impl Plot {
     pub fn scatter_plot(x: Array1<f64>, y: Array1<f64>) -> Plot {
@@ -122,6 +128,7 @@ pub trait Experiment: Serialize + DeserializeOwned {
 
             println!(" - {}/{}.svg", path, page.name);
             match plotlib::page::Page::single(&view)
+                    .dimensions(page.dimensions.0, page.dimensions.1)
                     .save(&format!("{}/{}.svg", path, page.name)) {
                 Ok(()) => {},
                 Err(e) => bail!(format_err!("Error in plot {}: {:?}", page.name, e)),
