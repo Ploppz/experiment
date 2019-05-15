@@ -91,22 +91,19 @@ impl Plot {
 pub trait Experiment: Serialize + DeserializeOwned {
 
     /// Returns information which helps create a plot
-    fn plot(experiments: &[Self]) -> Vec<Page>;
-
-    // Merge several experiments into one, if applicable.
-    // fn merge(experiments: &'a [Self]) -> Self;
-
-    // fn params(&self) -> Vec<T>;
+    fn plot(&self) -> Vec<Page>;
 
     /// Present writes plot images to path directory.
     /// It takes many rather than one experiment to open up for the possibility of for example
     /// plotting experiments in the same graph.
     /// `path` is the path to the directory.
-    fn write_plot(experiments: &[Self], path: &str) -> Result<(), Error> {
-        println!("Writing to {}", path);
+    fn write_plot(&self, path: &str) -> Result<(), Error> {
+        println!("Working directory: {}", path);
+        println!("Writing parameters to {}/params.txt", path);
+        std::fs::write(format!("{}/params.txt", path), self.print_params())?;
         let colors = vec!["olivedrab", "lightcoral", "royalblue", "peru", "darkcyan", "saddlebrown", "darkmagenta"];
 
-        for page in Self::plot(experiments) {
+        for page in Self::plot(self) {
 
             let mut view = page.config;
 
@@ -139,22 +136,21 @@ pub trait Experiment: Serialize + DeserializeOwned {
     // fn merge(&self, other: &Self) -> Self;
 
     /// Both saves and plots (calls `present`)
-    fn save(experiments: Vec<Self>, path: &str) -> Result<(), Error> {
+    fn save(&self, path: &str) -> Result<(), Error> {
         let date = Local::now();
         let _ = fs::create_dir_all(path);
 
         // Serialize
         let mut out_file = fs::File::create(format!("{}/data.cbor", path))?;
-        serde_cbor::ser::to_writer(&mut out_file, &experiments)?;
+        serde_cbor::ser::to_writer(&mut out_file, self)?;
 
         // Plot
-        Self::write_plot(&experiments, path)?;
-
+        Self::write_plot(self, path)?;
 
         Ok(())
     }
     /// `path` should be to a file `data.cbor`
-    fn load(path: &str) -> Result<Vec<Self>, Error> {
+    fn load(path: &str) -> Result<Self, Error> {
         let file = fs::File::open(path)?;
 
         // Ok(bincode::deserialize_from(file)?)
@@ -166,7 +162,7 @@ pub trait Experiment: Serialize + DeserializeOwned {
         Self::write_plot(&e, path)?;
         Ok(())
     }
-    fn print_params(&self);
+    fn print_params(&self) -> String;
 
 }
 
