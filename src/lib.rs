@@ -10,89 +10,12 @@ use plotlib::{
     view::ContinuousView,
 };
 
-
-pub struct Page {
-    pub plots: Vec<Plot>,
-    config: ContinuousView,
-    name: String,
-    dimensions: (u32, u32),
-
-}
-impl Page {
-    pub fn new<S: Into<String>>(name: S, config: ContinuousView) -> Self {
-        Page {
-            plots: Vec::new(),
-            config,
-            name: name.into(),
-            dimensions: (600, 400),
-        }
-    }
-    pub fn add_plot(mut self, plot: Plot) -> Self {
-        self.plots.push(plot);
-        self
-    }
-    pub fn dimensions(mut self, x: u32, y: u32) -> Self {
-        self.dimensions = (x, y);
-        self
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Style {
-    Points,
-    Lines,
-}
-
-#[derive(Debug, Clone)]
-pub struct Plot {
-    x: Array1<f64>,
-    y: Array1<f64>,
-    legend: Option<String>,
-    style: Style,
-    width: f32,
-    color: Option<String>,
-}
-impl Plot {
-    pub fn scatter_plot(x: Array1<f64>, y: Array1<f64>) -> Plot {
-        Plot {
-            x,
-            y,
-            legend: None,
-            style: Style::Points,
-            width: 1.0,
-            color: None,
-        }
-    }
-    pub fn line_plot(x: Array1<f64>, y: Array1<f64>) -> Plot {
-        Plot {
-            x,
-            y,
-            legend: None,
-            style: Style::Lines,
-            width: 1.0,
-            color: None,
-        }
-    }
-
-    pub fn with_legend(mut self, legend: String) -> Self {
-        self.legend = Some(legend);
-        self
-    }
-    pub fn with_width(mut self, width: f32) -> Self {
-        self.width = width;
-        self
-    }
-    pub fn with_color(mut self, color: String) -> Self {
-        self.color = Some(color);
-        self
-    }
-}
-
 pub trait Experiment: Serialize + DeserializeOwned {
 
     /// Returns information which helps create a plot
-    fn plot(&self) -> Vec<Page>;
+    fn plot(&self, path: &str) -> Result<(), Error>;
 
+    /*
     /// Present writes plot images to path directory.
     /// It takes many rather than one experiment to open up for the possibility of for example
     /// plotting experiments in the same graph.
@@ -133,7 +56,7 @@ pub trait Experiment: Serialize + DeserializeOwned {
         }
         Ok(())
     }
-    // fn merge(&self, other: &Self) -> Self;
+    */
 
     /// Both saves and plots (calls `present`)
     fn save(&self, path: &str) -> Result<(), Error> {
@@ -145,7 +68,7 @@ pub trait Experiment: Serialize + DeserializeOwned {
         serde_cbor::ser::to_writer(&mut out_file, self)?;
 
         // Plot
-        Self::write_plot(self, path)?;
+        self.plot(path)?;
 
         Ok(())
     }
@@ -159,7 +82,7 @@ pub trait Experiment: Serialize + DeserializeOwned {
     /// Replot in a directory that already has a serialized experiment
     fn replot(path: &str) -> Result<(), Error> {
         let e = Self::load(&format!("{}/data.cbor", path))?;
-        Self::write_plot(&e, path)?;
+        e.plot(path)?;
         Ok(())
     }
     fn print_params(&self) -> String;
